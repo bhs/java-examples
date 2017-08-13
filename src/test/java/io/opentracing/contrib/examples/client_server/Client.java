@@ -1,6 +1,7 @@
 package io.opentracing.contrib.examples.client_server;
 
-import io.opentracing.ActiveSpan;
+import io.opentracing.Scope;
+import io.opentracing.Scope.Observer;
 import io.opentracing.Tracer;
 import io.opentracing.propagation.Format.Builtin;
 import io.opentracing.propagation.TextMapInjectAdapter;
@@ -20,16 +21,16 @@ public class Client {
   public void send() {
     Message message = new Message();
 
-    ActiveSpan activeSpan = tracer.buildSpan("send").startActive();
-    activeSpan.setTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_CLIENT);
-    tracer.inject(activeSpan.context(), Builtin.TEXT_MAP, new TextMapInjectAdapter(message));
+    Scope scope = tracer.buildSpan("send").startActive(Observer.FINISH_ON_CLOSE);
+    scope.span().setTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_CLIENT);
+    tracer.inject(scope.span().context(), Builtin.TEXT_MAP, new TextMapInjectAdapter(message));
 
     try {
       queue.put(message);
     } catch (InterruptedException e) {
       e.printStackTrace();
     } finally {
-      activeSpan.deactivate();
+      scope.close();
     }
   }
 

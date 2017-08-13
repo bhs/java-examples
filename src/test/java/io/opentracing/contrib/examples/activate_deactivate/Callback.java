@@ -1,7 +1,9 @@
 package io.opentracing.contrib.examples.activate_deactivate;
 
-import io.opentracing.ActiveSpan;
-import io.opentracing.ActiveSpan.Continuation;
+import io.opentracing.Scope;
+import io.opentracing.Scope.Observer;
+import io.opentracing.ScopeManager;
+import io.opentracing.Span;
 import io.opentracing.tag.Tags;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
@@ -15,27 +17,23 @@ public class Callback implements Runnable {
 
   private static final Logger logger = LoggerFactory.getLogger(Callback.class);
 
-  private final Continuation continuation;
+  private final Span continuation;
 
-  Callback(ActiveSpan activeSpan) {
-    continuation = activeSpan.capture();
+  Callback(Span activeSpan) {
+    continuation = activeSpan;
     logger.info("Callback created");
   }
 
   @Override
   public void run() {
     logger.info("Callback started");
-    ActiveSpan activeSpan = continuation.activate();
 
-    try {
+    try (Scope scope = continuation.activate(Observer.FINISH_ON_CLOSE)) {
       TimeUnit.SECONDS.sleep(1);
+      logger.info("Callback finished");
+      scope.span().setTag(Tags.HTTP_STATUS.getKey(), 200); // we need it to test that finished span has it
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
-
-    activeSpan
-        .setTag(Tags.HTTP_STATUS.getKey(), 200); // we need it to test that finished span has it
-    activeSpan.deactivate();
-    logger.info("Callback finished");
   }
 }

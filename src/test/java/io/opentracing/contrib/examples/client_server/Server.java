@@ -1,6 +1,7 @@
 package io.opentracing.contrib.examples.client_server;
 
-import io.opentracing.ActiveSpan;
+import io.opentracing.Scope;
+import io.opentracing.Scope.Observer;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.opentracing.propagation.Format.Builtin;
@@ -20,10 +21,10 @@ public class Server extends Thread {
 
   private void process(Message message) {
     SpanContext context = tracer.extract(Builtin.TEXT_MAP, new TextMapExtractAdapter(message));
-    ActiveSpan activeSpan = tracer.buildSpan("receive").asChildOf(context).startActive();
-    activeSpan.setTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_SERVER);
-
-    activeSpan.deactivate();
+    Scope scope = tracer.buildSpan("receive").asChildOf(context).startActive(
+        Observer.FINISH_ON_CLOSE);
+    scope.span().setTag(Tags.SPAN_KIND.getKey(), Tags.SPAN_KIND_SERVER);
+    scope.close();
   }
 
   @Override
